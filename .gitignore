@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+checkpoints/
+model/
+train.log
+.DS_Store
+.gradio/

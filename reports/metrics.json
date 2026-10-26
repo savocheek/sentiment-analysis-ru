@@ -1,0 +1,6 @@
+{
+  "test_size": 3600,
+  "baseline_tfidf_logreg_f1_macro": 0.7539,
+  "rubert_tiny2_f1_macro": 0.7844,
+  "rubert_tiny2_accuracy": 0.7825
+}
