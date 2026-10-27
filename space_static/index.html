@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Анализ отзывов на русском</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --line: #e3e3de;
+    --neg: #d1495b; --neu: #8d8d86; --pos: #2a9d6f; --accent: #3b6fd8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161615; --card: #20201e; --text: #ececea; --muted: #9a9a94; --line: #34342f;
+      --neg: #ef6f7f; --neu: #a5a59e; --pos: #4cc493; --accent: #7ea2ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  a { color: var(--accent); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  textarea { width: 100%; min-height: 110px; resize: vertical; padding: 12px; border-radius: 8px;
+             border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+  .row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  button { font: inherit; border: 0; border-radius: 8px; padding: 9px 18px; background: var(--accent); color: #fff; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  #status { color: var(--muted); font-size: 14px; }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .examples button { background: transparent; color: var(--text); border: 1px solid var(--line);
+                     padding: 5px 10px; font-size: 13px; text-align: left; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  h2 { font-size: 15px; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+  .big { font-size: 22px; font-weight: 650; margin-bottom: 10px; }
+  .bar { display: grid; grid-template-columns: 96px 1fr 48px; gap: 8px; align-items: center; font-size: 14px; margin: 4px 0; }
+  .track { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 4px; background: var(--accent); transition: width .3s; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  #results { display: none; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Анализ отзывов на русском</h1>
+  <p class="sub">Тональность, оценка 1–5★ и категория места. Модель
+    <a href="https://huggingface.co/savocheek/ru-reviews-rubert" target="_blank">ru-reviews-rubert</a>
+    (ruBert-base, дистиллированная из ruRoberta-large) работает прямо в браузере: ONNX int8, ничего не уходит на сервер.
+    Код: <a href="https://github.com/savocheek/sentiment-analysis-ru" target="_blank">GitHub</a>.</p>
+
+  <div class="card">
+    <textarea id="text" placeholder="Вставьте отзыв о кафе, отеле, салоне…">Еда вкусная и порции большие, но официант хамил, а цены завышены.</textarea>
+    <div class="row">
+      <button id="go" disabled>Анализировать</button>
+      <span id="status">Загрузка модели (~180 МБ, один раз)…</span>
+    </div>
+    <div class="examples" id="examples"></div>
+  </div>
+
+  <div id="results" class="grid">
+    <div class="card"><h2>Тональность</h2><div class="big" id="label"></div><div id="sent"></div></div>
+    <div class="card"><h2>Оценка автора</h2><div class="big" id="stars"></div><div id="starbars"></div></div>
+    <div class="card"><h2>Категория места</h2><div class="big" id="cat"></div><div id="catbars"></div></div>
+  </div>
+
+  <footer>Уверенность тональности откалибрована (temperature scaling, T ≈ 2.0). «Нейтрально» в данных — это отзывы на 3★.
+    Аспекты и подсветка слов есть в полной версии демо: <code>DEVICE=cpu python app.py</code>.</footer>
+</main>
+
+<script type="module">
+import { AutoTokenizer } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1";
+import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.min.mjs";
+
+const REPO = "savocheek/ru-reviews-rubert";
+const ONNX_URL = `https://huggingface.co/${REPO}/resolve/main/onnx/model.int8.onnx`;
+const TEMPERATURE = 2.003;  // reports/calibration.json of the model
+const LABELS = { negative: ["Негатив", "--neg"], neutral: ["Нейтрально", "--neu"], positive: ["Позитив", "--pos"] };
+const CATEGORIES = ["Гостиница", "Ресторан", "Кафе", "Супермаркет", "Магазин продуктов", "Быстрое питание",
+  "Салон красоты", "Торговый центр", "Бар, паб", "Парк культуры и отдыха", "Автосервис, автотехцентр",
+  "Медцентр, клиника", "Аптека", "Кофейня", "Пиццерия", "другое"];
+const EXAMPLES = [
+  "Отличная кофейня! Бариста знает своё дело, круассаны свежие, обязательно вернёмся.",
+  "Ждали заказ час, официант нахамил, суп холодный. Больше ни ногой.",
+  "Еда вкусная и порции большие, но официант хамил, а цены завышены.",
+  "Номер чистый, но шумоизоляция никакая и завтрак скудный за такие деньги.",
+  "Ни разу не пожалели, что выбрали этот отель.",
+  "Спасибо огромное за холодную пиццу и хамство, очень приятно.",
+  "Записалась на маникюр, мастер опоздала на 20 минут, но покрытие держится уже три недели.",
+];
+
+const $ = (id) => document.getElementById(id);
+const status = (s) => { $("status").textContent = s; };
+
+ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/";
+ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
+
+// sentiment.clean(): html entities, tags, literal "\n", whitespace
+function clean(text) {
+  const t = new DOMParser().parseFromString(text, "text/html").documentElement.textContent || "";
+  return t.replace(/\\n/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function softmax(logits, t = 1) {
+  const m = Math.max(...logits);
+  const e = logits.map((x) => Math.exp((x - m) / t));
+  const s = e.reduce((a, b) => a + b, 0);
+  return e.map((x) => x / s);
+}
+
+async function fetchModel(url) {
+  let cache = null;
+  try { cache = await caches.open("ru-reviews-onnx"); const hit = await cache.match(url); if (hit) return new Uint8Array(await hit.arrayBuffer()); } catch {}
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const total = +r.headers.get("content-length") || 0;
+  const reader = r.body.getReader();
+  const chunks = []; let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value); got += value.length;
+    status(`Загрузка модели: ${(got / 2 ** 20).toFixed(0)}${total ? " / " + (total / 2 ** 20).toFixed(0) : ""} МБ…`);
+  }
+  const buf = new Uint8Array(got); let off = 0;
+  for (const c of chunks) { buf.set(c, off); off += c.length; }
+  try { await cache?.put(url, new Response(buf)); } catch {}
+  return buf;
+}
+
+function bars(el, items, color) {
+  el.innerHTML = items.map(([name, p, c]) =>
+    `<div class="bar"><span>${name}</span><div class="track"><div class="fill" style="width:${(p * 100).toFixed(1)}%;background:var(${c || color || "--accent"})"></div></div><span class="num">${(p * 100).toFixed(0)}%</span></div>`
+  ).join("");
+}
+
+let tokenizer, session;
+
+async function analyze() {
+  const text = clean($("text").value);
+  if (!text) { status("Введите текст отзыва"); return; }
+  $("go").disabled = true;
+  const t0 = performance.now();
+  const enc = await tokenizer(text, { truncation: true, max_length: 256 });
+  const feeds = {};
+  for (const k of ["input_ids", "attention_mask", "token_type_ids"]) {
+    feeds[k] = new ort.Tensor("int64", enc[k].data, enc[k].dims);
+  }
+  const out = await session.run(feeds);
+  const ms = performance.now() - t0;
+
+  const sent = softmax(Array.from(out.sentiment.data), TEMPERATURE);
+  const keys = Object.keys(LABELS);
+  const best = sent.indexOf(Math.max(...sent));
+  $("label").textContent = `${LABELS[keys[best]][0]} · ${(sent[best] * 100).toFixed(0)}%`;
+  $("label").style.color = `var(${LABELS[keys[best]][1]})`;
+  bars($("sent"), keys.map((k, i) => [LABELS[k][0], sent[i], LABELS[k][1]]));
+
+  const stars = softmax(Array.from(out.stars.data));
+  const expected = stars.reduce((a, p, i) => a + p * (i + 1), 0);
+  $("stars").textContent = `≈ ${expected.toFixed(1)} ★`;
+  bars($("starbars"), stars.map((p, i) => [`${i + 1} ★`, p]).reverse());
+
+  const cat = softmax(Array.from(out.category.data));
+  const top = cat.map((p, i) => [CATEGORIES[i], p]).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  $("cat").textContent = top[0][0];
+  bars($("catbars"), top);
+
+  $("results").style.display = "grid";
+  status(`Готово за ${ms.toFixed(0)} мс`);
+  $("go").disabled = false;
+}
+
+for (const ex of EXAMPLES) {
+  const b = document.createElement("button");
+  b.textContent = ex.length > 48 ? ex.slice(0, 46) + "…" : ex;
+  b.title = ex;
+  b.onclick = () => { $("text").value = ex; if (session) analyze(); };
+  $("examples").append(b);
+}
+$("go").onclick = analyze;
+$("text").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && session) analyze(); });
+
+try {
+  [tokenizer, session] = await Promise.all([
+    AutoTokenizer.from_pretrained(REPO),
+    fetchModel(ONNX_URL).then((buf) => { status("Инициализация…"); return ort.InferenceSession.create(buf, { executionProviders: ["wasm"] }); }),
+  ]);
+  $("go").disabled = false;
+  await analyze();
+} catch (e) {
+  console.error(e);
+  status(`Не удалось загрузить модель: ${e.message}`);
+}
+</script>
+</body>
+</html>

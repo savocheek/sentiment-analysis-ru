@@ -1,47 +1,19 @@
-"""Publish the model to the Hugging Face Hub and the demo to a Space (free CPU).
+"""Publish the model to the Hugging Face Hub and the demo to a static Space.
 
 The default model is the distilled ruBert-base student (./model, from distill.py) with its int8 ONNX
-in model/onnx/: on the Space's CPU the demo runs on onnxruntime (~7 ms per review), PyTorch is only
-needed for word explanations.
+in model/onnx/. The Space is space_static/: a plain page that downloads that ONNX from the model repo
+and runs it in the visitor's browser (onnxruntime-web + transformers.js tokenizer), so it needs no
+server; Gradio Spaces on free CPU require HF PRO.
 Needs your own token: `huggingface-cli login` or the HF_TOKEN environment variable. Nothing is uploaded without it.
-Usage: python publish.py HF_USER [--model-dir model] [--model-repo ru-reviews-rubert] [--space ru-reviews-demo]
+Usage: python publish.py HF_USER [--model-dir model] [--model-repo ru-reviews-rubert] [--space ru-reviews-demo] [--space-only]
 """
 import argparse
 import json
-import shutil
-import tempfile
 from pathlib import Path
 
 from huggingface_hub import HfApi
 
 GITHUB = "https://github.com/savocheek/sentiment-analysis-ru"
-
-SPACE_README = """---
-title: Анализ отзывов на русском
-emoji: 💬
-colorFrom: green
-colorTo: red
-sdk: gradio
-sdk_version: 6.30.0
-python_version: "3.12"
-app_file: app.py
-pinned: false
-license: mit
----
-Тональность, оценка 1–5★, категория места и аспекты для русскоязычных отзывов.
-Модель: [{model}](https://huggingface.co/{model}), код: [GitHub]({github}).
-"""
-
-# CPU-only torch keeps the Space image small; versions as in requirements.txt
-SPACE_REQUIREMENTS = """--extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.9.1
-transformers==5.21.0
-gradio==6.30.0
-onnxruntime==1.31.1
-matplotlib==3.11.2
-pandas
-huggingface_hub
-"""
 
 MODEL_CARD = """---
 language: ru
@@ -97,6 +69,7 @@ def main():
     p.add_argument("--model-dir", default="model")
     p.add_argument("--model-repo", default="ru-reviews-rubert")
     p.add_argument("--space", default="ru-reviews-demo")
+    p.add_argument("--space-only", action="store_true", help="skip the model upload")
     a = p.parse_args()
     api = HfApi()
     model_id, space_id = f"{a.user}/{a.model_repo}", f"{a.user}/{a.space}"
@@ -110,22 +83,22 @@ def main():
         top3=test["category"]["top3"], t=round(calib["temperature"], 2), ece_before=calib["до"]["ece"],
         ece_after=calib["после T-scaling"]["ece"])
 
+    if not a.space_only:
+        publish_model(api, model_id, src, card)
+    # the page hard-codes the model repo it loads from
+    if model_id not in Path("space_static/index.html").read_text(encoding="utf-8"):
+        raise SystemExit(f"space_static/index.html does not load {model_id}")
+    api.create_repo(space_id, repo_type="space", space_sdk="static", exist_ok=True)
+    api.upload_folder(repo_id=space_id, repo_type="space", folder_path="space_static")
+    print("demo:", f"https://huggingface.co/spaces/{space_id}")
+
+
+def publish_model(api, model_id, src, card):
     api.create_repo(model_id, exist_ok=True)
     api.upload_folder(repo_id=model_id, folder_path=src, ignore_patterns=["training_args.bin"],
                       commit_message="Distilled ruBert-base: sentiment + stars + category, int8 ONNX")
     api.upload_file(path_or_fileobj=card.encode("utf-8"), path_in_repo="README.md", repo_id=model_id)
     print("model:", f"https://huggingface.co/{model_id}")
-
-    with tempfile.TemporaryDirectory() as d:
-        for f in ("app.py", "sentiment.py"):
-            shutil.copy(f, d)
-        Path(d, "requirements.txt").write_text(SPACE_REQUIREMENTS)
-        Path(d, "README.md").write_text(SPACE_README.format(model=model_id, github=GITHUB), encoding="utf-8")
-        api.create_repo(space_id, repo_type="space", space_sdk="gradio", exist_ok=True)
-        api.add_space_variable(space_id, "MODEL_PATH", model_id)
-        api.add_space_variable(space_id, "DEVICE", "cpu")
-        api.upload_folder(repo_id=space_id, repo_type="space", folder_path=d)
-    print("demo:", f"https://huggingface.co/spaces/{space_id}")
 
 
 if __name__ == "__main__":
