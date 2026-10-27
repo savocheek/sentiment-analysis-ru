@@ -12,3 +12,5 @@ train*.log
 queue.log
 baselines.log
 multi*.log
+*.attempt2
+eval_*.log
