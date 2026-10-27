@@ -1,0 +1,21 @@
+{
+  "pytorch_fp32": {
+    "ms_per_review": 1918.1,
+    "reviews_per_s": 0,
+    "agree_with_pytorch": 1.0
+  },
+  "onnx_fp32": {
+    "ms_per_review": 72.1,
+    "reviews_per_s": 5,
+    "agree_with_pytorch": 1.0
+  },
+  "onnx_int8": {
+    "ms_per_review": 29.2,
+    "reviews_per_s": 10,
+    "agree_with_pytorch": 0.9467
+  },
+  "size_mb": {
+    "onnx_fp32": 1356,
+    "onnx_int8": 341
+  }
+}

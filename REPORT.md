@@ -49,7 +49,7 @@ Large лучше base больше чем на разброс по seed, поэ�
 
 **7. Тесты:** [test_sentiment.py](test_sentiment.py), [test_api.py](test_api.py) и старый [test_app.py](test_app.py) — все проходят на финальной модели (см. ниже).
 
-ONNX_REPORT
+**8. ONNX + int8** ([export_onnx.py](export_onnx.py), CPU): fp32 72 мс на отзыв, int8 — 29 мс, 341 МБ вместо 1356 МБ. int8 меняет 5% ответов large-модели (на tiny — 1%). PyTorch на CPU в AMD-сборке даёт 1.9 с на отзыв, но её CPU-путь не оптимизирован, поэтому это сравнение некорректно.
 
 ## Сбои и как они решены
 
