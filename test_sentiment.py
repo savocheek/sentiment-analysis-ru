@@ -20,9 +20,9 @@ def test_find_aspects():
 
 
 def test_polarity_label():
-    assert polarity_label([0.1, 0.6, 0.3]) == ("positive", 0.2)
-    assert polarity_label([0.4, 0.55, 0.05])[0] == "negative"
-    assert polarity_label([0.2, 0.6, 0.2])[0] == "neutral"
+    assert polarity_label([0.15, 0.84, 0.01])[0] == "negative"  # "суп остыл": neutral mass is ignored
+    assert polarity_label([0.1, 0.6, 0.3]) == ("positive", 0.5)
+    assert polarity_label([0.02, 0.96, 0.02])[0] == "neutral"
 
 
 @pytest.fixture(scope="module")

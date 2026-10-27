@@ -60,14 +60,9 @@ def clean(text):
     return re.sub(r"\s+", " ", text).strip()
 
 
-def clauses(text, max_words=12):
-    """Sentences and contrast clauses ("…, но …"); long ones are cut further at commas."""
-    parts = []
-    for p in _CLAUSE_SPLIT.split(clean(text)):
-        if p and len(p.split()) > max_words:
-            parts += p.split(",")
-        elif p:
-            parts.append(p)
+def clauses(text):
+    """Sentences, contrast clauses ("…, но …") and comma-separated parts: one fact per fragment."""
+    parts = [c for p in _CLAUSE_SPLIT.split(clean(text)) if p for c in p.split(",")]
     parts = [p.strip(" ,.;!?…") for p in parts]
     return [p for p in parts if len(p.split()) >= 2]
 
@@ -76,10 +71,11 @@ def find_aspects(fragment):
     return [a for a, rx in _ASPECT_RE.items() if rx.search(fragment)]
 
 
-def polarity_label(row, margin=0.1):
-    """Short fragments lean "neutral" (the model learnt 3★ = neutral from whole reviews),
-    so a clause is judged by polarity P(pos) − P(neg) instead of argmax."""
-    pol = float(row[2] - row[0])
+def polarity_label(row, margin=0.3):
+    """Short fragments lean "neutral" (the model learnt 3★ = neutral from whole reviews: "суп остыл" gets
+    P(neutral) 0.84), but the remaining mass still shows the sign. So a clause is judged by the polarity
+    (P(pos) − P(neg)) / (P(pos) + P(neg)) ∈ [−1, 1], ignoring the neutral mass."""
+    pol = float((row[2] - row[0]) / (row[2] + row[0] + 1e-6))
     return ("positive" if pol > margin else "negative" if pol < -margin else "neutral"), round(pol, 3)
 
 
