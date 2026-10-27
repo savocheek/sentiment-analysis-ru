@@ -89,6 +89,8 @@ class Analyzer:
         self.model = AutoModelForSequenceClassification.from_pretrained(model).to(self.device).eval()
         self.max_length = max_length
         self.heads, self.meta = None, {}
+        calib = Path(model) / "reports" / "calibration.json"  # calibrate.py: temperature fitted on val
+        self.temperature = json.loads(calib.read_text(encoding="utf-8"))["temperature"] if calib.exists() else 1.0
         meta = Path(model) / "multitask.json"
         if meta.exists():  # multi-task model (train_multi.py): stars 1–5 and place category heads
             self.meta = json.loads(meta.read_text(encoding="utf-8"))
@@ -102,8 +104,9 @@ class Analyzer:
             self.ort = ort.InferenceSession(os.environ["ONNX_MODEL"], providers=["CPUExecutionProvider"])
 
     @torch.inference_mode()
-    def probs(self, texts, batch_size=64, task="label"):
-        """(N, classes) probabilities: task "label" (LABELS order), "stars" (1..5) or "category"."""
+    def probs(self, texts, batch_size=64, task="label", temperature=1.0):
+        """(N, classes) probabilities: task "label" (LABELS order), "stars" (1..5) or "category".
+        temperature=self.temperature gives calibrated confidences (argmax is the same)."""
         out = []
         for i in range(0, len(texts), batch_size):
             if self.ort is not None:
@@ -111,7 +114,7 @@ class Analyzer:
                              padding=True, return_tensors="np")
                 feed = {k: e[k].astype(np.int64) for k in ("input_ids", "attention_mask")}
                 feed["token_type_ids"] = e.get("token_type_ids", np.zeros_like(e["input_ids"])).astype(np.int64)
-                x = self.ort.run([{"label": "sentiment"}.get(task, task)], feed)[0]
+                x = self.ort.run([{"label": "sentiment"}.get(task, task)], feed)[0] / temperature
                 x = np.exp(x - x.max(1, keepdims=True))
                 out.append(x / x.sum(1, keepdims=True))
                 continue
@@ -121,7 +124,7 @@ class Analyzer:
                 logits = self.model(**enc).logits
             else:
                 logits = self.heads[task](encode(self.model, enc)[1])
-            out.append(torch.softmax(logits.float(), -1).cpu().numpy())
+            out.append(torch.softmax(logits.float() / temperature, -1).cpu().numpy())
         return np.concatenate(out) if out else np.zeros((0, 3))
 
     def stars(self, text):
@@ -144,7 +147,7 @@ class Analyzer:
         text = clean(text)
         if not text:
             return {}
-        return dict(zip(LABELS, map(float, self.probs([text])[0])))
+        return dict(zip(LABELS, map(float, self.probs([text], temperature=self.temperature)[0])))
 
     def explain(self, text, steps=16, max_tokens=128):
         """Integrated Gradients of the logit gap logit(pos) − logit(neg) over the input embeddings,
@@ -200,7 +203,7 @@ class Analyzer:
         """Label every review and summarise: class shares and the most frequent complaints by aspect."""
         texts = [clean(t) for t in texts]
         keep = [i for i, t in enumerate(texts) if t]
-        p = self.probs([texts[i] for i in keep])
+        p = self.probs([texts[i] for i in keep], temperature=self.temperature)
         labels = [None] * len(texts)
         scores = [None] * len(texts)
         for i, row in zip(keep, p):
