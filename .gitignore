@@ -26,3 +26,7 @@ distill.log
 kinopoisk.log
 onnx_student.log
 onnx_student/
+*.pt
+*.pth
+*.safetensors
+*.onnx
