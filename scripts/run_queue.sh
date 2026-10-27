@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Train + evaluate a queue of experiments; each scorecard is appended to experiments.jsonl.
-# Usage: bash run_queue.sh  (edit the list at the bottom). Logs: train_<out>.log
+# Usage (from the repo root): bash scripts/run_queue.sh  (edit the list at the bottom). Logs: train_<out>.log
 export PYTHONUNBUFFERED=1 PYTHONUTF8=1PYTHONIOENCODING=utf-8 TQDM_DISABLE=1 HF_HUB_DISABLE_SYMLINKS_WARNING=1
 PY=${PY:-.venv/Scripts/python.exe}
 

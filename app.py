@@ -95,10 +95,15 @@ def columns(file):
 
 
 def model_card():
-    md = [f"**Модель:** `{MODEL}`" + (" — multi-task: тональность + 1–5★ + категория" if MULTI else "")]
-    for name, f in (("Тональность, 1–5★, категория (тест)", Path(MODEL) / "reports" / "multitask_test.json"),
+    md = [f"**Модель:** `{MODEL}`" + (" — multi-task: тональность + 1–5★ + категория" if MULTI else ""),
+          f"**Движок:** {'ONNX Runtime (int8), CPU' if an.ort is not None else f'PyTorch, {an.device}'}"]
+    if "teacher" in an.meta:
+        md.append("Дистиллированная ruBert-base: учитель — multi-task ruRoberta-large, качество на его уровне "
+                  "при скорости в 4–10 раз выше.")
+    for name, f in (("Тональность, 1–5★, категория (тест)", Path(an.path) / "reports" / "multitask_test.json"),
+                    ("Калибровка уверенности", Path(an.path) / "reports" / "calibration.json"),
                     ("Бейзлайн TF-IDF + LogReg (тест)", Path("reports/baselines.json")),
-                    ("Аспекты", Path(MODEL) / "reports" / "aspects.json")):
+                    ("Аспекты", Path(an.path) / "reports" / "aspects.json")):
         if f.exists():
             md.append(f"**{name}**\n```json\n{f.read_text(encoding='utf-8')[:1500]}\n```")
     return "\n\n".join(md)
@@ -116,7 +121,8 @@ EXAMPLES = [
 
 with gr.Blocks(title="Тональность отзывов") as demo:
     gr.Markdown("# Анализ отзывов на русском\n"
-                "ruBERT, дообученный на отзывах с Яндекс Карт: тональность, оценка 1–5★, категория места и аспекты.")
+                "ruBERT, дообученный на отзывах с Яндекс Карт: тональность, оценка 1–5★, категория места и аспекты. "
+                "[GitHub](https://github.com/savocheek/sentiment-analysis-ru)")
     with gr.Tab("Отзыв"):
         text = gr.Textbox(lines=4, label="Текст отзыва", placeholder="Вставьте отзыв о месте, товаре или сервисе…")
         btn = gr.Button("Анализировать", variant="primary")

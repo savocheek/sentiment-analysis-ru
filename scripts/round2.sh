@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Round 2 GPU queue: calibration and stress test of the final model, distillation into ruBert-base, student scorecards.
-# Strictly one GPU job at a time, 60 s cool-down between trainings. Usage: bash round2.sh > round2.log 2>&1
+# Strictly one GPU job at a time, 60 s cool-down between trainings. Usage (from the repo root): bash scripts/round2.sh > round2.log 2>&1
 export PYTHONUNBUFFERED=1 PYTHONUTF8=1 TQDM_DISABLE=1 HF_HUB_DISABLE_SYMLINKS_WARNING=1 OMP_NUM_THREADS=8
 PY=${PY:-.venv/Scripts/python.exe}
 busy() { powershell -NoProfile -c "@(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | ? CommandLine -match '$1').Count" | tr -d '\r'; }

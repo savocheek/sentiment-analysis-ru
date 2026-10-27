@@ -2,7 +2,7 @@
 # GPU queue after the v3 sweep: v3d, multi-task model on the winner, then seed repeats of the two best.
 # Strictly one GPU job at a time with a 60 s cool-down between them. Scorecards run on CPU in the
 # background, one at a time, ≤8 threads, started after the next job has finished tokenizing.
-# Usage: bash gpu_queue.sh > gpu_queue.log 2>&1   (safe to restart: finished models are skipped)
+# Usage (from the repo root): bash scripts/gpu_queue.sh > gpu_queue.log 2>&1   (safe to restart: finished models are skipped)
 export PYTHONUNBUFFERED=1 PYTHONUTF8=1 TQDM_DISABLE=1 HF_HUB_DISABLE_SYMLINKS_WARNING=1 OMP_NUM_THREADS=8
 PY=${PY:-.venv/Scripts/python.exe}
 declare -A FLAGS=(
@@ -23,7 +23,7 @@ cpu_eval() {  # background scorecard on CPU → experiments.jsonl, one at a time
    echo "== $(date +%H:%M) scored $1") &
 }
 cooldown() { echo "== $(date +%H:%M) cool-down 60 s"; sleep 60; }
-ranked() {  # v3 models by hard_dev_bal with real_f1 >= 0.779 (NEXT_STEPS rule), best first
+ranked() {  # v3 models by hard_dev_bal with real_f1 >= 0.779 (rule from the handoff note), best first
   "$PY" -c "
 import json
 rows = [json.loads(l) for l in open('experiments.jsonl', encoding='utf-8') if l.strip()]

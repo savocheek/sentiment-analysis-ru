@@ -203,7 +203,7 @@ ruRoberta-large точна, но тяжела: 1.4 ГБ и 72 мс на отзы
 
 На GPU (RX 7900 GRE) финальная модель: ~18 мс на отзыв, объяснение Integrated Gradients — 0.1–0.7 с.
 
-**ONNX в демо и API.** Если задать `ONNX_MODEL=onnx/model.onnx` (или `model.int8.onnx`), все вероятности (тональность, 1–5★, категория, аспекты) считает onnxruntime, а PyTorch нужен только для объяснений. Демо на CPU отвечает за **0.8 с** на отзыв вместо десятков секунд, пакет из 300 отзывов обрабатывается за 3.5 мин. Подсветка слов на CPU запускается отдельной кнопкой: градиенты на CPU — около 20 с.
+**ONNX в демо и API.** На CPU `Analyzer` сам подхватывает `MODEL/onnx/model.int8.onnx`, если файл есть; другой файл задаётся через `ONNX_MODEL` (путь от корня или от папки модели). Тогда все вероятности (тональность, 1–5★, категория, аспекты) считает onnxruntime, а PyTorch нужен только для объяснений. С large-моделью демо на CPU отвечало за 0.8 с на отзыв вместо десятков секунд; демо и Space теперь работают на ученике в int8 (7 мс на отзыв в модели). Подсветка слов на CPU запускается отдельной кнопкой: градиенты на CPU — около 20 с.
 
 ## Запуск
 
@@ -213,14 +213,15 @@ pip install -r requirements.txt                         # на GPU сначал�
 
 python mine_hard.py                                      # data/hard_*.jsonl
 python train.py --augment --hard --base-model ai-forever/ruRoberta-large --lr 1e-5 --batch 8 --out model_v3d
-python train_multi.py --base-model model_v3d --augment --hard --out model   # + 1–5★ и категория
-python evaluate.py model                                 # сводка: F1, hard-dev, рукописные наборы
+python train_multi.py --base-model model_v3d --augment --hard --out model_multi   # + 1–5★ и категория (учитель)
+python distill.py --teacher model_multi --student model_v3b --out model   # ученик, ~30 мин на RX 7900 GRE
+python evaluate.py model model_multi                     # сводка: F1, hard-dev, рукописные наборы
 python calibrate.py model                                # ECE + температура → model/reports/calibration.json
-python kinopoisk_eval.py model                           # внешний тест на рецензиях Кинопоиска
-python distill.py --teacher model --student model_v3b --out model_student   # ~30 мин на RX 7900 GRE
+python kinopoisk_eval.py model model_multi               # внешний тест на рецензиях Кинопоиска
+python export_onnx.py model onnx_student && mkdir -p model/onnx && cp onnx_student/model.int8.onnx model/onnx/
 
 python app.py                                            # демо: http://127.0.0.1:7860
-DEVICE=cpu ONNX_MODEL=onnx/model.onnx python app.py      # то же на CPU через ONNX (после export_onnx.py model onnx)
+DEVICE=cpu python app.py                                 # на CPU сам берёт model/onnx/model.int8.onnx
 uvicorn api:app --port 8000                              # API: http://127.0.0.1:8000/docs
 pytest -q                                                # тесты
 ```
@@ -233,7 +234,7 @@ curl -X POST localhost:8000/aspects -H "Content-Type: application/json" -d '{"te
 
 **Docker** (CPU): `docker build -t ru-reviews . && docker run -p 7860:7860 ru-reviews`. Для API: `docker run -p 8000:8000 ru-reviews uvicorn api:app --host 0.0.0.0 --port 8000`.
 
-**Hugging Face.** `huggingface-cli login`, затем `python publish.py <ваш_логин>`: веса уйдут в Hub, демо — на бесплатный Space.
+**Hugging Face.** `huggingface-cli login` (или переменная `HF_TOKEN`), затем `python publish.py <ваш_логин>`: веса ученика с int8 ONNX и карточкой модели уйдут в Hub, демо — на бесплатный CPU Space.
 
 **Обучение на AMD Radeon под Windows.** Модели обучены на RX 7900 GRE (16 ГБ) нативно, с PyTorch 2.9.1 + ROCm 7.2.1 от AMD для Windows (колёса с repo.radeon.com, Python 3.12). В этой сборке нет `torch.distributed`, а `Trainer` импортирует `DTensor`, поэтому [train.py](train.py) подставляет заглушку. Она срабатывает только если модуля нет, на Linux и Mac ничего не меняется. Время обучения: rubert-tiny2 — 4 мин, ruBert-base — 10 мин, ruRoberta-large — 30 мин, multi-task на large — 25 мин.
 
@@ -264,7 +265,7 @@ export_onnx.py    ONNX + int8, замер скорости на CPU; onnx_qualit
 kinopoisk_eval.py внешний тест на рецензиях Кинопоиска
 calibrate.py      ECE, диаграмма надёжности, temperature scaling
 distill.py        дистилляция large → base: псевдоразметка 100k отзывов + опечатки
-run_queue.sh, gpu_queue.sh, finalize.sh, round2.sh   очереди экспериментов на GPU
+scripts/          очереди экспериментов на GPU (run_queue, gpu_queue, finalize, round2); запуск из корня репозитория
 reports/          метрики, отчёты, графики
 ```
 

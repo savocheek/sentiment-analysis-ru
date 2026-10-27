@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # After all training: score the models that still lack a scorecard (GPU is free now, one job at a time),
-# then print the seed summary used to pick the winner.  Usage: bash finalize.sh
+# then print the seed summary used to pick the winner.  Usage (from the repo root): bash scripts/finalize.sh
 export PYTHONUNBUFFERED=1 PYTHONUTF8=1 TQDM_DISABLE=1 HF_HUB_DISABLE_SYMLINKS_WARNING=1 OMP_NUM_THREADS=8
 PY=${PY:-.venv/Scripts/python.exe}
 

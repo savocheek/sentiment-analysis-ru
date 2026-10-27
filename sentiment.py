@@ -98,10 +98,16 @@ class Analyzer:
                                     {"stars": 5, "category": len(self.meta["categories"])})
             self.heads.load_state_dict(torch.load(Path(model) / "heads.pt", map_location="cpu"))
             self.heads.to(self.device).eval()
+        self.path = model
         self.ort = None
-        if os.getenv("ONNX_MODEL"):  # export_onnx.py output: all probabilities via onnxruntime (fast on CPU);
-            import onnxruntime as ort  # explain() still needs the PyTorch model for gradients
-            self.ort = ort.InferenceSession(os.environ["ONNX_MODEL"], providers=["CPUExecutionProvider"])
+        # export_onnx.py output: all probabilities via onnxruntime (fast on CPU); explain() still needs PyTorch.
+        # ONNX_MODEL may be relative to the model folder; on CPU MODEL/onnx/model.int8.onnx is used by default.
+        onnx = os.getenv("ONNX_MODEL") or ("onnx/model.int8.onnx" if self.device == "cpu" else "")
+        if onnx and (Path(model) / onnx).exists():  # the model's own export wins over a same-named file in cwd
+            onnx = Path(model) / onnx
+        if onnx and Path(onnx).exists():
+            import onnxruntime as ort
+            self.ort = ort.InferenceSession(str(onnx), providers=["CPUExecutionProvider"])
 
     @torch.inference_mode()
     def probs(self, texts, batch_size=64, task="label", temperature=1.0):
