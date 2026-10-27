@@ -16,16 +16,27 @@ Hard-test (`data/hard_test.jsonl`) ещё ни разу не открывали 
 
 ## 1. Подготовка
 
+Целевой ПК: **AMD Radeon RX 7900 GRE (16 ГБ, gfx1100) + Ryzen 7 9800X3D**. Видеокарта AMD, поэтому нужна сборка PyTorch под **ROCm**, а не под CUDA.
+В ROCm-сборке `torch.cuda.*` работает через HIP, поэтому код проекта менять не нужно: fp16 включится сам.
+
+Варианты по надёжности:
+1. **Linux (Ubuntu 22.04/24.04)**: ROCm + `pip install torch --index-url https://download.pytorch.org/whl/rocmX.Y` (актуальная версия — на pytorch.org).
+2. **Windows + WSL2 (Ubuntu)**: драйвер Adrenalin с поддержкой WSL, затем ROCm для WSL по инструкции AMD и та же команда pip внутри WSL.
+3. **Windows нативно**: сборка PyTorch для Windows от AMD (ROCm on Windows) — по актуальной инструкции AMD для серии RX 7000.
+
+Перед установкой сверить версии с текущей документацией AMD ROCm и pytorch.org: они часто меняются.
+
 ```bash
 git clone <repo> && cd <repo>          # или распаковать архив
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install torch --index-url https://download.pytorch.org/whl/cu124   # под свою версию CUDA, см. pytorch.org
-pip install -r requirements.txt
-python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"   # должно быть True
+# установить torch под ROCm (см. выше), затем:
+pip install -r requirements.txt         # torch>=2.4 уже выполнено ROCm-сборкой, pip её не заменит
+python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+# ждём: True и 'AMD Radeon RX 7900 GRE'
 python mine_hard.py                     # data/hard_*.jsonl, детерминированно (≈2 мин)
 ```
 
-На NVIDIA обучение само включает fp16.
+16 ГБ видеопамяти: base-модели — с запасом; ruRoberta-large — `--batch 8` (или 16 при `--max-length 128`).
 
 ## 2. Эксперименты (по убыванию ожидаемой пользы)
 
@@ -37,7 +48,7 @@ run() { python train.py --augment --hard "$@" && python evaluate.py "${@: -1}" |
 run --out model_v3a_gpu                                                              # контроль: должно совпасть с v3a ±0.01
 run --base-model ai-forever/ruBert-base --out model_v3b                               # крупная модель, полные настройки
 run --base-model seara/rubert-base-cased-russian-sentiment --lr 3e-5 --out model_v3c  # уже обучена на тональность
-run --base-model ai-forever/ruRoberta-large --lr 1e-5 --batch 16 --out model_v3d      # 355M, нужно ≥16 ГБ видеопамяти
+run --base-model ai-forever/ruRoberta-large --lr 1e-5 --batch 8 --out model_v3d       # 355M, впритык в 16 ГБ
 ```
 
 `run` ставит `--out` последним аргументом, так что evaluate получает папку модели.
