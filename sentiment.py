@@ -86,6 +86,9 @@ def polarity_label(row, margin=0.1):
 class Analyzer:
     def __init__(self, model=MODEL, max_length=256):
         self.device = os.getenv("DEVICE") or ("cuda" if torch.cuda.is_available() else "cpu")
+        if not Path(model).exists():  # Hub id: fetch the whole repo so heads.pt/multitask.json come along
+            from huggingface_hub import snapshot_download
+            model = snapshot_download(model)
         self.tok = AutoTokenizer.from_pretrained(model)
         self.model = AutoModelForSequenceClassification.from_pretrained(model).to(self.device).eval()
         self.max_length = max_length
