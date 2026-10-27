@@ -10,6 +10,11 @@ import matplotlib
 matplotlib.use("Agg")
 import numpy as np
 import torch
+
+if not torch.distributed.is_available():  # AMD's ROCm wheels for Windows ship without torch.distributed,
+    import sys, types                     # but Trainer imports DTensor just to check isinstance()
+    sys.modules["torch.distributed.tensor"] = types.SimpleNamespace(DTensor=type("DTensor", (), {}))
+
 from datasets import Dataset, concatenate_datasets, load_dataset
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression

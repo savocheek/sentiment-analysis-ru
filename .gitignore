@@ -9,3 +9,4 @@ model_v1/
 data/
 model_*/
 train*.log
+queue.log
