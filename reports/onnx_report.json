@@ -17,5 +17,15 @@
   "size_mb": {
     "onnx_fp32": 1356,
     "onnx_int8": 341
+  },
+  "quality": {
+    "model.onnx": {
+      "real_f1": 0.8196,
+      "hard_dev_bal": 0.814
+    },
+    "model.int8.onnx": {
+      "real_f1": 0.8104,
+      "hard_dev_bal": 0.805
+    }
   }
 }
