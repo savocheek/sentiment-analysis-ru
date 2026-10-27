@@ -21,3 +21,8 @@ finalize.log
 error_analysis.log
 gpu_queue.log
 stress.log
+round2.log
+distill.log
+kinopoisk.log
+onnx_student.log
+onnx_student/

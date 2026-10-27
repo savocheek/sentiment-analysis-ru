@@ -1,0 +1,218 @@
+{
+ "tfidf_logreg": {
+  "start": {
+   "f1_macro": 0.3998,
+   "accuracy": 0.4347,
+   "recall": {
+    "negative": 0.555,
+    "neutral": 0.613,
+    "positive": 0.136
+   },
+   "confusion": [
+    [
+     555,
+     443,
+     2
+    ],
+    [
+     322,
+     613,
+     65
+    ],
+    [
+     450,
+     414,
+     136
+    ]
+   ]
+  },
+  "end": {
+   "f1_macro": 0.4043,
+   "accuracy": 0.434,
+   "recall": {
+    "negative": 0.536,
+    "neutral": 0.611,
+    "positive": 0.155
+   },
+   "confusion": [
+    [
+     536,
+     461,
+     3
+    ],
+    [
+     315,
+     611,
+     74
+    ],
+    [
+     437,
+     408,
+     155
+    ]
+   ]
+  }
+ },
+ "model": {
+  "start": {
+   "f1_macro": 0.6287,
+   "accuracy": 0.6373,
+   "recall": {
+    "negative": 0.703,
+    "neutral": 0.417,
+    "positive": 0.792
+   },
+   "confusion": [
+    [
+     703,
+     273,
+     24
+    ],
+    [
+     221,
+     417,
+     362
+    ],
+    [
+     97,
+     111,
+     792
+    ]
+   ]
+  },
+  "end": {
+   "f1_macro": 0.6399,
+   "accuracy": 0.644,
+   "recall": {
+    "negative": 0.626,
+    "neutral": 0.48,
+    "positive": 0.826
+   },
+   "confusion": [
+    [
+     626,
+     354,
+     20
+    ],
+    [
+     154,
+     480,
+     366
+    ],
+    [
+     63,
+     111,
+     826
+    ]
+   ]
+  }
+ },
+ "model_v1": {
+  "start": {
+   "f1_macro": 0.4594,
+   "accuracy": 0.4813,
+   "recall": {
+    "negative": 0.786,
+    "neutral": 0.384,
+    "positive": 0.274
+   },
+   "confusion": [
+    [
+     786,
+     208,
+     6
+    ],
+    [
+     502,
+     384,
+     114
+    ],
+    [
+     442,
+     284,
+     274
+    ]
+   ]
+  },
+  "end": {
+   "f1_macro": 0.4771,
+   "accuracy": 0.496,
+   "recall": {
+    "negative": 0.768,
+    "neutral": 0.437,
+    "positive": 0.283
+   },
+   "confusion": [
+    [
+     768,
+     227,
+     5
+    ],
+    [
+     438,
+     437,
+     125
+    ],
+    [
+     376,
+     341,
+     283
+    ]
+   ]
+  }
+ },
+ "model_v3b": {
+  "start": {
+   "f1_macro": 0.5954,
+   "accuracy": 0.5943,
+   "recall": {
+    "negative": 0.617,
+    "neutral": 0.483,
+    "positive": 0.683
+   },
+   "confusion": [
+    [
+     617,
+     357,
+     26
+    ],
+    [
+     214,
+     483,
+     303
+    ],
+    [
+     115,
+     202,
+     683
+    ]
+   ]
+  },
+  "end": {
+   "f1_macro": 0.6015,
+   "accuracy": 0.601,
+   "recall": {
+    "negative": 0.528,
+    "neutral": 0.511,
+    "positive": 0.764
+   },
+   "confusion": [
+    [
+     528,
+     442,
+     30
+    ],
+    [
+     146,
+     511,
+     343
+    ],
+    [
+     56,
+     180,
+     764
+    ]
+   ]
+  }
+ }
+}

@@ -128,6 +128,31 @@ def train_examples(max_per_cat=400, seed=42):
     return {"text": [t for t, _ in rows], "label": [l for _, l in rows]}
 
 
+KEYS = "йцукенгшщзхъ фывапролджэ ячсмитьбю"  # ЙЦУКЕН rows: a "neighbour" is the next key in the row
+
+
+def typos(text, rng, rate=0.06):
+    """Human-like typos in ~rate of letters: swap with the next letter, drop, double, or hit a neighbour key."""
+    out, i = [], 0
+    while i < len(text):
+        c = text[i]
+        if not c.isalpha() or rng.random() >= rate:
+            out.append(c)
+        else:
+            op = rng.randrange(4)
+            if op == 0 and i + 1 < len(text) and text[i + 1].isalpha():
+                out += [text[i + 1], c]
+                i += 1
+            elif op == 2:
+                out += [c, c]
+            elif op == 3:
+                k = KEYS.find(c.lower())
+                out.append(KEYS[k + 1] if 0 <= k < len(KEYS) - 1 and KEYS[k + 1] != " " else c)
+            # op == 1 (or a swap at the end of a word): the letter is dropped
+        i += 1
+    return "".join(out)
+
+
 if __name__ == "__main__":
     from collections import Counter
     tr, ho = generate(0), generate(1)
