@@ -1,6 +1,6 @@
 """Fine-tune rubert-tiny2 on Russian reviews (Yandex Maps) for 3-class sentiment.
 
-Usage: python train.py [--per-class 12000] [--epochs 3] [--augment]
+Usage: python train.py [--per-class 12000] [--epochs 3] [--augment] [--hard] [--base-model ID] [--seed N]
 """
 import argparse
 import json
@@ -53,6 +53,12 @@ def main():
     p.add_argument("--epochs", type=float, default=3)
     p.add_argument("--out", default="model")
     p.add_argument("--augment", action="store_true", help="add synthetic sarcasm/negation reviews (augment.py) to train")
+    p.add_argument("--hard", action="store_true", help="add real hard reviews data/hard_train.jsonl (mine_hard.py) to train")
+    p.add_argument("--base-model", default=BASE_MODEL)
+    p.add_argument("--seed", type=int, default=SEED)
+    p.add_argument("--max-length", type=int, default=256)
+    p.add_argument("--batch", type=int, default=32)
+    p.add_argument("--resume", help="checkpoint dir to continue an interrupted run from")
     args = p.parse_args()
 
     train, val, test = load_balanced(args.per_class)
@@ -60,17 +66,20 @@ def main():
         from augment import train_examples
         synth = Dataset.from_dict(train_examples()).cast(train.features)
         train = concatenate_datasets([train, synth]).shuffle(seed=SEED)
+    if args.hard:
+        hard = Dataset.from_json("data/hard_train.jsonl").cast(train.features)
+        train = concatenate_datasets([train, hard]).shuffle(seed=SEED)
     print(f"train={len(train)} val={len(val)} test={len(test)}")
 
     base_f1 = baseline(train, test)
     print(f"TF-IDF + LogReg macro-F1: {base_f1:.4f}")
 
-    tok = AutoTokenizer.from_pretrained(BASE_MODEL)
-    enc = lambda b: tok(b["text"], truncation=True, max_length=256)
+    tok = AutoTokenizer.from_pretrained(args.base_model)
+    enc = lambda b: tok(b["text"], truncation=True, max_length=args.max_length)
     train_t, val_t, test_t = (d.map(enc, batched=True) for d in (train, val, test))
 
     model = AutoModelForSequenceClassification.from_pretrained(
-        BASE_MODEL, num_labels=3,
+        args.base_model, num_labels=3,
         id2label=dict(enumerate(LABELS)), label2id={l: i for i, l in enumerate(LABELS)})
 
     def metrics(ev):
@@ -81,15 +90,15 @@ def main():
     trainer = Trainer(
         model=model,
         args=TrainingArguments(
-            output_dir="checkpoints", num_train_epochs=args.epochs,
-            per_device_train_batch_size=32, per_device_eval_batch_size=64,
+            output_dir=f"checkpoints/{args.out}", num_train_epochs=args.epochs,
+            per_device_train_batch_size=args.batch, per_device_eval_batch_size=64,
             learning_rate=5e-5, warmup_steps=0.06, weight_decay=0.01,
             eval_strategy="epoch", save_strategy="epoch", save_total_limit=1,
             load_best_model_at_end=True, metric_for_best_model="f1_macro",
-            logging_steps=100, report_to="none", seed=SEED),
+            logging_steps=100, report_to="none", seed=args.seed),
         train_dataset=train_t, eval_dataset=val_t,
         data_collator=DataCollatorWithPadding(tok), compute_metrics=metrics)
-    trainer.train()
+    trainer.train(resume_from_checkpoint=args.resume)
 
     out = trainer.predict(test_t)
     pred = np.argmax(out.predictions, axis=-1)
@@ -99,7 +108,7 @@ def main():
     trainer.save_model(args.out)
     tok.save_pretrained(args.out)
 
-    reports = Path("reports")
+    reports = Path("reports") if args.out == "model" else Path(args.out) / "reports"  # experiments keep their own
     reports.mkdir(exist_ok=True)
     (reports / "classification_report.txt").write_text(report)
     (reports / "metrics.json").write_text(json.dumps({

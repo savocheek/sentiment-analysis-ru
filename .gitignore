@@ -1,8 +1,11 @@
 .venv/
 __pycache__/
 checkpoints/
-model/
+model
 train.log
 .DS_Store
 .gradio/
 model_v1/
+data/
+model_*/
+train*.log
