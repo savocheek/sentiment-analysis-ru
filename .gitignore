@@ -10,3 +10,5 @@ data/
 model_*/
 train*.log
 queue.log
+baselines.log
+multi*.log

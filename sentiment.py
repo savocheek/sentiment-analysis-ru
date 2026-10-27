@@ -4,9 +4,11 @@
 - Analyzer:   probabilities, word-level explanations (occlusion), aspect sentiment, CSV batch summary
 """
 import html
+import json
 import os
 import re
 from collections import Counter
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -35,6 +37,21 @@ ASPECTS = {
 _ASPECT_RE = {a: re.compile(rf"\b({p})", re.I) for a, p in ASPECTS.items()}
 _CLAUSE_SPLIT = re.compile(r"(?<=[.!?…;])\s+|\s*[,–—-]\s*(?=(?:но|а|однако|зато|хотя|правда)\s)|\s+(?=но\s)", re.I)
 _WORD = re.compile(r"\S+")
+
+
+def encode(model, enc):
+    """Shared encoder pass → (sentiment logits, pooled vector the extra heads read)."""
+    h = model.base_model(**enc)
+    if model.config.model_type == "bert":  # BertForSequenceClassification: classifier(dropout(pooler))
+        pooled = h.pooler_output
+        return model.classifier(model.dropout(pooled)), pooled
+    seq = h.last_hidden_state  # RoBERTa-style heads read the <s> token themselves
+    return model.classifier(seq), seq[:, 0]
+
+
+def make_heads(hidden, sizes):
+    return torch.nn.ModuleDict({k: torch.nn.Sequential(torch.nn.Dropout(0.1), torch.nn.Linear(hidden, n))
+                                for k, n in sizes.items()})
 
 
 def clean(text):
@@ -72,16 +89,43 @@ class Analyzer:
         self.tok = AutoTokenizer.from_pretrained(model)
         self.model = AutoModelForSequenceClassification.from_pretrained(model).to(self.device).eval()
         self.max_length = max_length
+        self.heads, self.meta = None, {}
+        meta = Path(model) / "multitask.json"
+        if meta.exists():  # multi-task model (train_multi.py): stars 1–5 and place category heads
+            self.meta = json.loads(meta.read_text(encoding="utf-8"))
+            self.heads = make_heads(self.model.config.hidden_size,
+                                    {"stars": 5, "category": len(self.meta["categories"])})
+            self.heads.load_state_dict(torch.load(Path(model) / "heads.pt", map_location="cpu"))
+            self.heads.to(self.device).eval()
 
     @torch.inference_mode()
-    def probs(self, texts, batch_size=64):
-        """(N, 3) probabilities in LABELS order."""
+    def probs(self, texts, batch_size=64, task="label"):
+        """(N, classes) probabilities: task "label" (LABELS order), "stars" (1..5) or "category"."""
         out = []
         for i in range(0, len(texts), batch_size):
             enc = self.tok(texts[i:i + batch_size], truncation=True, max_length=self.max_length,
                            padding=True, return_tensors="pt").to(self.device)
-            out.append(torch.softmax(self.model(**enc).logits.float(), -1).cpu().numpy())
+            if task == "label":
+                logits = self.model(**enc).logits
+            else:
+                logits = self.heads[task](encode(self.model, enc)[1])
+            out.append(torch.softmax(logits.float(), -1).cpu().numpy())
         return np.concatenate(out) if out else np.zeros((0, 3))
+
+    def stars(self, text):
+        """{1: p, …, 5: p} and the expected rating; empty for empty input or a sentiment-only model."""
+        text = clean(text)
+        if not text or self.heads is None:
+            return {}, None
+        p = self.probs([text], task="stars")[0]
+        return {s: float(x) for s, x in zip(range(1, 6), p)}, round(float(p @ np.arange(1, 6)), 2)
+
+    def category(self, text, top=5):
+        text = clean(text)
+        if not text or self.heads is None:
+            return {}
+        p = self.probs([text], task="category")[0]
+        return {self.meta["categories"][i]: float(p[i]) for i in np.argsort(-p)[:top]}
 
     def predict(self, text):
         """{label: probability}; empty dict for empty input."""

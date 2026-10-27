@@ -31,7 +31,8 @@ def rating_to_label(r):
     return 0 if r <= 2 else 1 if r == 3 else 2
 
 
-def load_balanced(per_class):
+def load_balanced(per_class, extra=()):
+    """Same split for any `extra` columns (rating, rubrics…): column choice does not change the shuffles."""
     ds = load_dataset("d0rj/geo-reviews-dataset-2023", split="train")
     ds = ds.filter(lambda x: x["rating"] >= 1 and x["text"] and len(x["text"]) > 20)
     ds = ds.map(lambda x: {"label": rating_to_label(x["rating"]),
@@ -39,7 +40,7 @@ def load_balanced(per_class):
     # Balance classes: neutral (3★) is the smallest at ~21k, positive dominates at ~430k.
     parts = [ds.filter(lambda x, c=c: x["label"] == c).shuffle(seed=SEED).select(range(per_class))
              for c in range(3)]
-    ds = concatenate_datasets(parts).shuffle(seed=SEED).select_columns(["text", "label"])
+    ds = concatenate_datasets(parts).shuffle(seed=SEED).select_columns(["text", "label", *extra])
     split = ds.train_test_split(test_size=0.2, seed=SEED)
     val_test = split["test"].train_test_split(test_size=0.5, seed=SEED)
     return split["train"], val_test["train"], val_test["test"]
