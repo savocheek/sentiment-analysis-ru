@@ -29,7 +29,7 @@ def analyse(text):
     if not scores:
         return {}, "", [], {}, "", {}, pd.DataFrame(columns=ASPECT_COLS), ""
     note = "⚠️ Модель не уверена: отзыв, скорее всего, смешанный." if max(scores.values()) < 0.55 else ""
-    words = [(w + " ", "к позитиву" if x > 0.2 else "к негативу" if x < -0.2 else None) for w, x in an.explain(text)]
+    words = explain(text) if an.device != "cpu" else []  # on CPU: on demand, gradients are slow there
 
     stars, mean = an.stars(text)
     stars_label = {"★" * s + "☆" * (5 - s): p for s, p in stars.items()}
@@ -43,6 +43,10 @@ def analyse(text):
     summary = (f"**Хвалят:** {', '.join(plus) or '—'}  \n**Ругают:** {', '.join(minus) or '—'}" if asp
                else "Аспекты не найдены: в отзыве нет слов из словаря (еда, персонал, цены…).")
     return scores, note, words, stars_label, stars_note, category, pd.DataFrame(rows, columns=ASPECT_COLS), summary
+
+
+def explain(text):
+    return [(w + " ", "к позитиву" if x > 0.2 else "к негативу" if x < -0.2 else None) for w, x in an.explain(text)]
 
 
 def batch(file, column):
@@ -120,8 +124,10 @@ with gr.Blocks(title="Тональность отзывов") as demo:
         with gr.Tab("Тональность"):
             label = gr.Label(num_top_classes=3, label="Тональность")
             note = gr.Markdown()
-            words = gr.HighlightedText(label="Какие слова повлияли на ответ", show_legend=True,
+            why = gr.Button("Какие слова повлияли?", size="sm")
+            words = gr.HighlightedText(label="Какие слова повлияли на ответ (Integrated Gradients)", show_legend=True,
                                        color_map={"к позитиву": "#3fa45b", "к негативу": "#d9534f"})
+            why.click(explain, text, words)
         with gr.Tab("Оценка 1–5★"):
             stars = gr.Label(num_top_classes=5, label="Какую оценку поставил автор")
             stars_note = gr.Markdown()

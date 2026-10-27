@@ -96,12 +96,25 @@ class Analyzer:
                                     {"stars": 5, "category": len(self.meta["categories"])})
             self.heads.load_state_dict(torch.load(Path(model) / "heads.pt", map_location="cpu"))
             self.heads.to(self.device).eval()
+        self.ort = None
+        if os.getenv("ONNX_MODEL"):  # export_onnx.py output: all probabilities via onnxruntime (fast on CPU);
+            import onnxruntime as ort  # explain() still needs the PyTorch model for gradients
+            self.ort = ort.InferenceSession(os.environ["ONNX_MODEL"], providers=["CPUExecutionProvider"])
 
     @torch.inference_mode()
     def probs(self, texts, batch_size=64, task="label"):
         """(N, classes) probabilities: task "label" (LABELS order), "stars" (1..5) or "category"."""
         out = []
         for i in range(0, len(texts), batch_size):
+            if self.ort is not None:
+                e = self.tok(texts[i:i + batch_size], truncation=True, max_length=self.max_length,
+                             padding=True, return_tensors="np")
+                feed = {k: e[k].astype(np.int64) for k in ("input_ids", "attention_mask")}
+                feed["token_type_ids"] = e.get("token_type_ids", np.zeros_like(e["input_ids"])).astype(np.int64)
+                x = self.ort.run([{"label": "sentiment"}.get(task, task)], feed)[0]
+                x = np.exp(x - x.max(1, keepdims=True))
+                out.append(x / x.sum(1, keepdims=True))
+                continue
             enc = self.tok(texts[i:i + batch_size], truncation=True, max_length=self.max_length,
                            padding=True, return_tensors="pt").to(self.device)
             if task == "label":

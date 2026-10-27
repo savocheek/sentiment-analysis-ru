@@ -145,6 +145,8 @@
 
 На GPU (RX 7900 GRE) финальная модель: ~18 мс на отзыв, объяснение Integrated Gradients — 0.1–0.7 с.
 
+**ONNX в демо и API.** Если задать `ONNX_MODEL=onnx/model.onnx` (или `model.int8.onnx`), все вероятности (тональность, 1–5★, категория, аспекты) считает onnxruntime, а PyTorch нужен только для объяснений. Демо на CPU отвечает за **0.8 с** на отзыв вместо десятков секунд, пакет из 300 отзывов обрабатывается за 3.5 мин. Подсветка слов на CPU запускается отдельной кнопкой: градиенты на CPU — около 20 с.
+
 ## Запуск
 
 ```bash
@@ -157,6 +159,7 @@ python train_multi.py --base-model model_v3d --augment --hard --out model   # + 
 python evaluate.py model                                 # сводка: F1, hard-dev, рукописные наборы
 
 python app.py                                            # демо: http://127.0.0.1:7860
+DEVICE=cpu ONNX_MODEL=onnx/model.onnx python app.py      # то же на CPU через ONNX (после export_onnx.py model onnx)
 uvicorn api:app --port 8000                              # API: http://127.0.0.1:8000/docs
 pytest -q                                                # тесты
 ```
