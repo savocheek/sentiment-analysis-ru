@@ -15,3 +15,7 @@ multi*.log
 *.attempt2
 eval_*.log
 aspect_eval.log
+onnx/
+onnx.log
+finalize.log
+error_analysis.log
