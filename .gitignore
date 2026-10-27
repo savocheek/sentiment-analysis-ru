@@ -14,3 +14,4 @@ baselines.log
 multi*.log
 *.attempt2
 eval_*.log
+aspect_eval.log

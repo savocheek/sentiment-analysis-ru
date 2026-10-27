@@ -190,8 +190,17 @@ class Analyzer:
         complaints = [{"aspect": a, "negative": k, "positive": pos[a], "example": examples[a][0][:160]}
                       for a, k in neg.most_common()]
         praise = [{"aspect": a, "positive": k, "negative": neg[a]} for a, k in pos.most_common()]
-        return {
+        out = {
             "labels": labels, "scores": scores, "total": len(texts), "analysed": len(keep),
             "share": {l: round(counts[l] / n, 3) for l in LABELS},
             "complaints": complaints, "praise": praise,
         }
+        if self.heads is not None and keep:  # multi-task model: predicted stars and place category too
+            kept = [texts[i] for i in keep]
+            sp, gp = self.probs(kept, task="stars"), self.probs(kept, task="category")
+            out["stars"], out["category"] = [None] * len(texts), [None] * len(texts)
+            for i, s_row, g_row in zip(keep, sp, gp):
+                out["stars"][i] = int(s_row.argmax()) + 1
+                out["category"][i] = self.meta["categories"][int(g_row.argmax())]
+            out["mean_stars"] = round(float((sp @ np.arange(1, 6)).mean()), 2)
+        return out
