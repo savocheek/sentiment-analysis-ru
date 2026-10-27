@@ -5,6 +5,7 @@ Usage: python evaluate.py MODEL_DIR [MODEL_DIR ...] [--hard dev|test]
 """
 import argparse
 import json
+import os
 from pathlib import Path
 
 from sklearn.metrics import f1_score
@@ -30,7 +31,7 @@ def main():
     held = [(c, t, LABELS[l]) for c, t, l in generate(1)]
 
     for m in args.models:
-        clf = pipeline("text-classification", model=m, truncation=True, max_length=256)
+        clf = pipeline("text-classification", model=m, truncation=True, max_length=256, device=os.getenv("DEVICE"))
         top = lambda texts: [r["label"] for r in clf(list(texts), batch_size=32)]
         real = top(test["text"])
         hp = top(x["text"] for x in hard)

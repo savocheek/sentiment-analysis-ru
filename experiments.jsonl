@@ -3,3 +3,6 @@
 {"model": "model_v3a", "real_f1": 0.7798, "hard_dev_neg": 0.649, "hard_dev_pos": 0.9, "fresh23": 12, "first25": 20, "templ141": 93, "hard_dev_bal": 0.774}
 {"model": "model_v1", "real_f1": 0.7819, "hard_dev_neg": 0.58, "hard_dev_pos": 0.853, "fresh23": 6, "first25": 18, "templ141": 52, "hard_dev_bal": 0.716}
 {"model": "model_v2", "real_f1": 0.7821, "hard_dev_neg": 0.567, "hard_dev_pos": 0.887, "fresh23": 13, "first25": 20, "templ141": 94, "hard_dev_bal": 0.727}
+{"model": "model_v3a_gpu", "real_f1": 0.7772, "hard_dev_neg": 0.662, "hard_dev_pos": 0.87, "fresh23": 12, "first25": 21, "templ141": 95, "hard_dev_bal": 0.766}
+{"model": "model_v3b", "real_f1": 0.7973, "hard_dev_neg": 0.636, "hard_dev_pos": 0.935, "fresh23": 18, "first25": 24, "templ141": 134, "hard_dev_bal": 0.786}
+{"model": "model_v3c", "real_f1": 0.7866, "hard_dev_neg": 0.623, "hard_dev_pos": 0.931, "fresh23": 13, "first25": 23, "templ141": 118, "hard_dev_bal": 0.777}

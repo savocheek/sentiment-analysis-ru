@@ -2,6 +2,7 @@
 
 Usage: python stress_test.py [model_dir] [report.md]  (defaults: model, reports/stress_test.md)
 """
+import os
 import random
 import sys
 import re
@@ -112,7 +113,7 @@ def score_cases(top, title, cases, show_rows=True):
 def main():
     model = sys.argv[1] if len(sys.argv) > 1 else "model"
     out = sys.argv[2] if len(sys.argv) > 2 else "reports/stress_test.md"
-    clf = pipeline("text-classification", model=model, truncation=True, max_length=256)
+    clf = pipeline("text-classification", model=model, truncation=True, max_length=256, device=os.getenv("DEVICE"))
     top = lambda texts: [r["label"] for r in clf(texts, batch_size=32)]
     md = [f"# Стресс-тест в искусственных условиях (`{model}`)\n"]
 
