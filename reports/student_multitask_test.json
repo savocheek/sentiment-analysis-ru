@@ -1,0 +1,17 @@
+{
+  "label": {
+    "accuracy": 0.8231,
+    "f1_macro": 0.8228
+  },
+  "stars": {
+    "accuracy": 0.7564,
+    "f1_macro": 0.5593,
+    "mae": 0.356,
+    "within_1": 0.8967
+  },
+  "category": {
+    "accuracy": 0.7519,
+    "f1_macro": 0.6004,
+    "top3": 0.9536
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "pytorch_fp32": {
+    "ms_per_review": 514.8,
+    "reviews_per_s": 1,
+    "agree_with_pytorch": 1.0
+  },
+  "onnx_fp32": {
+    "ms_per_review": 14.6,
+    "reviews_per_s": 24,
+    "agree_with_pytorch": 1.0
+  },
+  "onnx_int8": {
+    "ms_per_review": 7.4,
+    "reviews_per_s": 39,
+    "agree_with_pytorch": 0.9833
+  },
+  "size_mb": {
+    "onnx_fp32": 680,
+    "onnx_int8": 171
+  },
+  "quality": {
+    "model.onnx": {
+      "real_f1": 0.8228,
+      "hard_dev_bal": 0.814
+    },
+    "model.int8.onnx": {
+      "real_f1": 0.8232,
+      "hard_dev_bal": 0.807
+    }
+  }
+}

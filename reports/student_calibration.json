@@ -1,0 +1,15 @@
+{
+ "temperature": 2.003,
+ "до": {
+  "ece": 0.1186,
+  "nll": 0.6144,
+  "mean_confidence": 0.9413,
+  "accuracy": 0.8231
+ },
+ "после T-scaling": {
+  "ece": 0.0286,
+  "nll": 0.462,
+  "mean_confidence": 0.8381,
+  "accuracy": 0.8231
+ }
+}

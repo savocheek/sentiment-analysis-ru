@@ -12,3 +12,4 @@
 {"model": "model_v3d_s2", "real_f1": 0.8262, "hard_dev_neg": 0.654, "hard_dev_pos": 0.939, "fresh23": 17, "first25": 23, "templ141": 135, "hard_dev_bal": 0.796}
 {"model": "model_v3b_s1", "real_f1": 0.8061, "hard_dev_neg": 0.619, "hard_dev_pos": 0.957, "fresh23": 19, "first25": 23, "templ141": 130, "hard_dev_bal": 0.788}
 {"model": "model_v3b_s2", "real_f1": 0.8022, "hard_dev_neg": 0.606, "hard_dev_pos": 0.952, "fresh23": 18, "first25": 24, "templ141": 128, "hard_dev_bal": 0.779}
+{"model": "model_student", "real_f1": 0.8228, "hard_dev_neg": 0.693, "hard_dev_pos": 0.935, "fresh23": 16, "first25": 24, "templ141": 133, "hard_dev_bal": 0.814}

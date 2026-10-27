@@ -1,4 +1,4 @@
-# Где остановились (27.10.2026, 10:30 МСК)
+# Где остановились (27.10.2026, 17:15 МСК)
 
 Передаточная записка для следующей сессии. Полный отчёт о дне — [REPORT.md](REPORT.md), результаты — [README.md](README.md).
 
@@ -7,6 +7,8 @@
 - Финальная модель — **multi-task на ruRoberta-large** (`model/` = `model_multi`, в git не лежит, 1.4 ГБ): тональность F1 0.820, hard-test 0.835 (открыт один раз, [final_test.jsonl](final_test.jsonl)), 1–5★ MAE 0.35, категория acc 0.753 / top-3 0.95.
 - Все эксперименты — в [experiments.jsonl](experiments.jsonl); seed-повторы: large 0.820 ± 0.007 / hard-dev 0.809 ± 0.012, base 0.802 / 0.784.
 - Чекпоинты и модели (`model_v1`…`model_v3d_s2`, `model_multi`, `onnx/`) лежат на Windows-ПК с RX 7900 GRE, в git их нет.
+- Второй раунд (см. REPORT.md): внешний тест на Кинопоиске (0.640), калибровка (T в `model/reports/calibration.json`), **ученик `model_student`** (ruBert-base, дистилляция): F1 0.823, hard-test 0.832, ONNX int8 7.4 мс / 171 МБ на CPU (`onnx_student/`).
+- Репозиторий: https://github.com/savocheek/sentiment-analysis-ru (gh CLI — портативный, `%LOCALAPPDATA%\gh-cliin\gh.exe`).
 - **Hard-test уже открыт.** Новые эксперименты сравнивать только по hard-dev, иначе тест перестанет быть честным.
 
 ## Как воспроизвести на этом ПК (AMD RX 7900 GRE, Windows)
@@ -22,7 +24,7 @@ python train_multi.py --base-model model_v3d --augment --hard --out model_multi 
 
 ## Что дальше (по убыванию пользы)
 
-1. **Опубликовать:** `huggingface-cli login` → `python publish.py <логин>`. Для бесплатного CPU Space лучше ONNX (`ONNX_MODEL`) или дистиллированная base-модель: large на CPU медленная.
+1. **Опубликовать на HF:** `huggingface-cli login` → `python publish.py <логин>`. Для бесплатного CPU Space — ученик `model_student` + `onnx_student/model.int8.onnx` (publish.py пока публикует `model/`).
 2. **Аспекты как отдельная голова:** разметить 200–300 фраз (аспект + тональность) и дообучить. Сейчас словарь + полярность фраз дают 81% на смешанных отзывах.
 3. **Сарказм:** собрать живые примеры (3/8 в рукописном наборе).
 4. **«Нейтрально»** размечено по звёздам — главный источник ошибок (96% ошибок на границе с нейтральным). Ручная переразметка 1–2 тыс. отзывов дала бы честную метрику.
