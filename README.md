@@ -1,5 +1,7 @@
 # Анализ отзывов на русском: тональность, оценка 1–5★, категория, аспекты
 
+**Модель на Hugging Face:** [savocheek/ru-reviews-rubert](https://huggingface.co/savocheek/ru-reviews-rubert) — дистиллированная ruBert-base, три головы + ONNX int8 для CPU. Демо локально: `DEVICE=cpu python app.py`.
+
 Одна multi-task модель на базе [`ai-forever/ruRoberta-large`](https://huggingface.co/ai-forever/ruRoberta-large), дообученная на 36 000 отзывах с Яндекс Карт. По тексту отзыва она определяет:
 
 - **тональность**: негатив / нейтрально / позитив, плюс подсветку слов, которые повлияли на ответ;
