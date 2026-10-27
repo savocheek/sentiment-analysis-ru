@@ -19,3 +19,5 @@ onnx/
 onnx.log
 finalize.log
 error_analysis.log
+gpu_queue.log
+stress.log
