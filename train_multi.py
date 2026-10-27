@@ -18,7 +18,7 @@ import numpy as np
 import torch
 from datasets import Dataset, concatenate_datasets
 from torch.utils.data import DataLoader
-from transformers import (AutoModelForSequenceClassification, AutoTokenizer, DataCollatorWithPadding,
+from transformers import (AutoConfig, AutoModelForSequenceClassification, AutoTokenizer, DataCollatorWithPadding,
                           get_linear_schedule_with_warmup)
 
 from baselines import task_metrics
@@ -53,8 +53,8 @@ def main():
     p.add_argument("--base-model", default="model_v3b")
     p.add_argument("--out", default="model_multi")
     p.add_argument("--epochs", type=float, default=2)
-    p.add_argument("--lr", type=float, default=2e-5)
-    p.add_argument("--batch", type=int, default=32)
+    p.add_argument("--lr", type=float, help="default: 2e-5, or 1e-5 for large encoders")
+    p.add_argument("--batch", type=int, help="default: 32, or 8 for large encoders (16 GB VRAM)")
     p.add_argument("--max-length", type=int, default=256)
     p.add_argument("--seed", type=int, default=SEED)
     p.add_argument("--augment", action="store_true")
@@ -75,6 +75,10 @@ def main():
         train = concatenate_datasets([train, masked(Dataset.from_json("data/hard_train.jsonl"))])
     print(f"train={len(train)} val={len(val)} test={len(test)} categories={len(cats)}", flush=True)
 
+    large = AutoConfig.from_pretrained(args.base_model).hidden_size >= 1024
+    args.lr = args.lr or (1e-5 if large else 2e-5)
+    args.batch = args.batch or (8 if large else 32)
+    print(f"lr={args.lr} batch={args.batch}", flush=True)
     tok = AutoTokenizer.from_pretrained(args.base_model)
     enc = lambda b: tok(b["text"], truncation=True, max_length=args.max_length)
     train_t, val_t, test_t = (d.map(enc, batched=True, num_proc=4).remove_columns("text") for d in (train, val, test))

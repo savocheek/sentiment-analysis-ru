@@ -6,3 +6,4 @@
 {"model": "model_v3a_gpu", "real_f1": 0.7772, "hard_dev_neg": 0.662, "hard_dev_pos": 0.87, "fresh23": 12, "first25": 21, "templ141": 95, "hard_dev_bal": 0.766}
 {"model": "model_v3b", "real_f1": 0.7973, "hard_dev_neg": 0.636, "hard_dev_pos": 0.935, "fresh23": 18, "first25": 24, "templ141": 134, "hard_dev_bal": 0.786}
 {"model": "model_v3c", "real_f1": 0.7866, "hard_dev_neg": 0.623, "hard_dev_pos": 0.931, "fresh23": 13, "first25": 23, "templ141": 118, "hard_dev_bal": 0.777}
+{"model": "model_v3d", "real_f1": 0.8126, "hard_dev_neg": 0.684, "hard_dev_pos": 0.939, "fresh23": 17, "first25": 23, "templ141": 136, "hard_dev_bal": 0.811}
