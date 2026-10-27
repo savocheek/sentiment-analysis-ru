@@ -8,7 +8,7 @@
 - Все эксперименты — в [experiments.jsonl](experiments.jsonl); seed-повторы: large 0.820 ± 0.007 / hard-dev 0.809 ± 0.012, base 0.802 / 0.784.
 - Чекпоинты и модели (`model_v1`…`model_v3d_s2`, `model_multi`, `onnx/`) лежат на Windows-ПК с RX 7900 GRE, в git их нет.
 - Второй раунд (см. REPORT.md): внешний тест на Кинопоиске (0.640), калибровка (T в `model/reports/calibration.json`), **ученик `model_student`** (ruBert-base, дистилляция): F1 0.823, hard-test 0.832, ONNX int8 7.4 мс / 171 МБ на CPU (`onnx_student/`).
-- Репозиторий: https://github.com/savocheek/sentiment-analysis-ru (gh CLI — портативный, `%LOCALAPPDATA%\gh-cliin\gh.exe`).
+- Репозиторий: https://github.com/savocheek/sentiment-analysis-ru (gh CLI — портативный, `%LOCALAPPDATA%/gh-cli/bin/gh.exe`).
 - **Hard-test уже открыт.** Новые эксперименты сравнивать только по hard-dev, иначе тест перестанет быть честным.
 
 ## Как воспроизвести на этом ПК (AMD RX 7900 GRE, Windows)
