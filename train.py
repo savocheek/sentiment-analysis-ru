@@ -1,6 +1,6 @@
 """Fine-tune rubert-tiny2 on Russian reviews (Yandex Maps) for 3-class sentiment.
 
-Usage: python train.py [--per-class 12000] [--epochs 3]
+Usage: python train.py [--per-class 12000] [--epochs 3] [--augment]
 """
 import argparse
 import json
@@ -9,7 +9,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import numpy as np
-from datasets import concatenate_datasets, load_dataset
+from datasets import Dataset, concatenate_datasets, load_dataset
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import ConfusionMatrixDisplay, classification_report, f1_score
@@ -52,9 +52,14 @@ def main():
     p.add_argument("--per-class", type=int, default=12000)
     p.add_argument("--epochs", type=float, default=3)
     p.add_argument("--out", default="model")
+    p.add_argument("--augment", action="store_true", help="add synthetic sarcasm/negation reviews (augment.py) to train")
     args = p.parse_args()
 
     train, val, test = load_balanced(args.per_class)
+    if args.augment:  # train only: val/test stay real reviews
+        from augment import train_examples
+        synth = Dataset.from_dict(train_examples()).cast(train.features)
+        train = concatenate_datasets([train, synth]).shuffle(seed=SEED)
     print(f"train={len(train)} val={len(val)} test={len(test)}")
 
     base_f1 = baseline(train, test)

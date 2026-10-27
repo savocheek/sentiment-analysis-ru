@@ -1,14 +1,16 @@
 """Stress test under artificial conditions: hand-made tricky reviews, noise robustness, edge inputs, speed.
 
-Usage: python stress_test.py  → prints results, writes reports/stress_test.md
+Usage: python stress_test.py [model_dir] [report.md]  (defaults: model, reports/stress_test.md)
 """
 import random
+import sys
 import re
 import time
 from pathlib import Path
 
 from transformers import pipeline
 
+from augment import generate
 from train import LABELS, load_balanced
 
 N, U, P = "negative", "neutral", "positive"
@@ -42,6 +44,34 @@ CASES = [
     ("короткий", "Пойдёт.", U),
 ]
 
+# Second hand-written set: written after the augmentation templates, deliberately in other
+# phrasings, and never used for training — the honest check that the model learned the idea.
+FRESH = [
+    ("сарказм", "Великолепно: курьер опоздал на три часа и ещё обиделся.", N),
+    ("сарказм", "Какой сервис! Мне даже разрешили самому убрать за собой стол.", N),
+    ("сарказм", "Прекрасно провели час в очереди, незабываемые впечатления.", N),
+    ("сарказм", "Очень рекомендую, если хотите уйти голодными и без денег.", N),
+    ("сарказм", "Чудесный отель, особенно плесень в душе — придаёт шарм.", N),
+    ("сарказм", "Ну конечно, кто же отвечает на звонки в рабочее время.", N),
+    ("сарказм", "Пять звёзд за креативность: перепутали заказ трижды.", N),
+    ("сарказм", "Повар, видимо, большой любитель соли. Очень большой.", N),
+    ("искренне", "Спасибо мастеру за аккуратную работу, всё идеально.", P),
+    ("искренне", "Браво шеф-повару, давно не ели такой сочный стейк.", P),
+    ("искренне", "Великолепно отдохнули, персонал предугадывал каждое желание.", P),
+    ("отрицание → позитив", "Ни одной претензии к курьеру, всё привёз вовремя.", P),
+    ("отрицание → позитив", "Ничуть не хуже дорогих ресторанов, а цены ниже.", P),
+    ("отрицание → позитив", "Ожидал подвоха, но его не оказалось — всё честно.", P),
+    ("отрицание → позитив", "Никогда ещё не встречал настолько внимательного персонала.", P),
+    ("отрицание → позитив", "Не пожалела ни об одном потраченном рубле.", P),
+    ("отрицание → позитив", "Не было ни минуты, чтобы детям стало скучно.", P),
+    ("отрицание → негатив", "Не вкусно, не быстро и не дёшево.", N),
+    ("отрицание → негатив", "Ни уюта, ни вкуса, ни нормального сервиса.", N),
+    ("отрицание → негатив", "Не понимаю, за что тут хорошие оценки.", N),
+    ("отрицание → негатив", "Нормальной еды здесь не дождёшься.", N),
+    ("отрицание → негатив", "Ни разу персонал даже не поздоровался.", N),
+    ("отрицание → негатив", "Не советую даже врагу.", N),
+]
+
 EDGE = ["😡😡😡", "👍", "5/5", "1/10", "....", "<div>&nbsp;</div>", "а", "Хорошо. " * 400]
 
 
@@ -65,23 +95,32 @@ def noise(text, kind, rng):
     raise ValueError(kind)
 
 
-def main():
-    clf = pipeline("text-classification", model="model", truncation=True, max_length=256)
-    top = lambda texts: [r["label"] for r in clf(texts, batch_size=32)]
-    md = ["# Стресс-тест в искусственных условиях\n"]
-
-    # 1. Hand-made tricky reviews
-    preds = top([t for _, t, _ in CASES])
-    cats = {}
-    rows = []
-    for (cat, text, exp), got in zip(CASES, preds):
+def score_cases(top, title, cases, show_rows=True):
+    preds = top([t for _, t, _ in cases])
+    cats, rows = {}, []
+    for (cat, text, exp), got in zip(cases, preds):
         cats.setdefault(cat, []).append(exp == got)
         rows.append(f"| {cat} | {text} | {exp} | {got} | {'✅' if exp == got else '❌'} |")
     total = sum(sum(v) for v in cats.values())
-    md += [f"## 1. Сложные отзывы, написанные вручную: {total}/{len(CASES)}\n",
-           "| Категория | Верно |", "|---|---|"]
+    md = [f"## {title}: {total}/{len(cases)}\n", "| Категория | Верно |", "|---|---|"]
     md += [f"| {c} | {sum(v)}/{len(v)} |" for c, v in cats.items()]
-    md += ["", "| Категория | Текст | Ожидалось | Модель | |", "|---|---|---|---|---|", *rows, ""]
+    if show_rows:
+        md += ["", "| Категория | Текст | Ожидалось | Модель | |", "|---|---|---|---|---|", *rows]
+    return md + [""]
+
+
+def main():
+    model = sys.argv[1] if len(sys.argv) > 1 else "model"
+    out = sys.argv[2] if len(sys.argv) > 2 else "reports/stress_test.md"
+    clf = pipeline("text-classification", model=model, truncation=True, max_length=256)
+    top = lambda texts: [r["label"] for r in clf(texts, batch_size=32)]
+    md = [f"# Стресс-тест в искусственных условиях (`{model}`)\n"]
+
+    # 1. Hand-made tricky reviews
+    md += score_cases(top, "1. Сложные отзывы, написанные вручную", CASES)
+    md += score_cases(top, "1б. Новый рукописный набор (сарказм и отрицания, в обучении нет)", FRESH)
+    held = [(c, t, LABELS[l]) for c, t, l in generate(1)]
+    md += score_cases(top, "1в. Отложенные шаблоны из augment.py (в обучении нет)", held, show_rows=False)
 
     # 2. Noise robustness on real test reviews
     _, _, test = load_balanced(12000)
@@ -122,7 +161,7 @@ def main():
            f"- Пачкой по 32: **{batch:.0f} отзывов/с**", ""]
 
     report = "\n".join(md)
-    Path("reports/stress_test.md").write_text(report)
+    Path(out).write_text(report)
     print(report)
 
 

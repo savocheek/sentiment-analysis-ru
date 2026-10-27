@@ -5,3 +5,4 @@ model/
 train.log
 .DS_Store
 .gradio/
+model_v1/
