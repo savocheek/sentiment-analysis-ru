@@ -1,0 +1,3 @@
+{"model": "model_v1", "real_f1": 0.7819, "hard_test_neg": 0.593, "hard_test_pos": 0.847, "fresh23": 6, "first25": 18, "templ141": 52, "hard_test_bal": 0.72}
+{"model": "model_v2", "real_f1": 0.7821, "hard_test_neg": 0.55, "hard_test_pos": 0.871, "fresh23": 13, "first25": 20, "templ141": 94, "hard_test_bal": 0.711}
+{"model": "model_multi", "real_f1": 0.8196, "hard_test_neg": 0.716, "hard_test_pos": 0.955, "fresh23": 18, "first25": 22, "templ141": 135, "hard_test_bal": 0.835}
