@@ -133,21 +133,42 @@ class Analyzer:
             return {}
         return dict(zip(LABELS, map(float, self.probs([text])[0])))
 
-    def explain(self, text, max_words=150):
-        """Occlusion: drop each word and see how polarity P(pos) − P(neg) moves.
+    def explain(self, text, steps=16, max_tokens=128):
+        """Integrated Gradients of the logit gap logit(pos) − logit(neg) over the input embeddings,
+        from a baseline where every word token is <pad>; subword scores are summed into words.
+        (Leave-one-word-out was tried first: on a 0.99-confident model with redundant cues it is noise.)
 
         Returns [(word, weight)], weight > 0 — the word pushes towards positive, < 0 — towards negative,
-        scaled so the strongest word is ±1.
+        scaled so the strongest word is ±1. Words past max_tokens get 0 (a backward pass per step is costly).
         """
-        words = _WORD.findall(clean(text))[:max_words]
+        text = clean(text)
+        words = [(m.start(), m.end(), m.group()) for m in _WORD.finditer(text)]
         if not words:
             return []
-        variants = [" ".join(words)] + [" ".join(words[:i] + words[i + 1:]) for i in range(len(words))]
-        p = self.probs(variants)
-        polarity = p[:, 2] - p[:, 0]
-        w = polarity[0] - polarity[1:]
+        enc = self.tok(text, return_tensors="pt", return_offsets_mapping=True, truncation=True,
+                       max_length=max_tokens)
+        offsets = enc.pop("offset_mapping")[0].tolist()
+        enc = {k: v.to(self.device) for k, v in enc.items()}
+        emb_layer = self.model.get_input_embeddings()
+        ids = enc["input_ids"]
+        is_word = torch.tensor([e > s for s, e in offsets], device=self.device)
+        base_ids = torch.where(is_word, torch.full_like(ids, self.tok.pad_token_id), ids)
+        emb, base = emb_layer(ids).detach(), emb_layer(base_ids).detach()
+        alphas = torch.linspace(1 / steps, 1, steps, device=self.device).view(-1, 1, 1)
+        path = (base + alphas * (emb - base)).requires_grad_(True)
+        mask = enc["attention_mask"].expand(steps, -1)
+        with torch.enable_grad():
+            logits = self.model(inputs_embeds=path, attention_mask=mask).logits.float()
+            (logits[:, 2] - logits[:, 0]).sum().backward()
+        token_attr = ((emb - base) * path.grad.mean(0, keepdim=True)).sum(-1)[0].cpu().numpy()
+        w = np.zeros(len(words))
+        for (s, e), v in zip(offsets, token_attr):
+            for i, (ws, we, _) in enumerate(words):
+                if s < e and s < we and e > ws:
+                    w[i] += v
+                    break
         scale = max(np.abs(w).max(), 1e-6)
-        return [(word, round(float(x / scale), 3)) for word, x in zip(words, w)]
+        return [(word, round(float(x / scale), 3)) for (_, _, word), x in zip(words, w)]
 
     def aspects(self, text):
         """Per-clause sentiment for every aspect mentioned: [{aspect, fragment, label, polarity}]."""

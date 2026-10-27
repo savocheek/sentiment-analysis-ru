@@ -49,7 +49,7 @@ def main():
 
     # The most confident mistakes between the extremes, with the words that drove them
     md += ["", "## Самые уверенные грубые ошибки и слова, которые к ним привели\n",
-           "Вес слова — насколько ответ меняется без него (окклюзия): `+` тянет к позитиву, `−` к негативу.\n"]
+           "Вес слова — Integrated Gradients (sentiment.Analyzer.explain): `+` тянет к позитиву, `−` к негативу.\n"]
     idx = [i for i in np.argsort(-p.max(1)) if {gold[i], pred[i]} == {0, 2}][:8]
     for i in idx:
         w = sorted(an.explain(texts[i]), key=lambda x: -abs(x[1]))[:5]
