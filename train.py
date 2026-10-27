@@ -1,6 +1,6 @@
 """Fine-tune rubert-tiny2 on Russian reviews (Yandex Maps) for 3-class sentiment.
 
-Usage: python train.py [--per-class 12000] [--epochs 3] [--augment] [--hard] [--base-model ID] [--seed N]
+Usage: python train.py [--per-class 12000] [--epochs 3] [--augment] [--hard] [--base-model ID] [--seed N] [--max-length N] [--batch N] [--resume DIR] [--lr X]
 """
 import argparse
 import json
@@ -9,11 +9,12 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import numpy as np
+import torch
 from datasets import Dataset, concatenate_datasets, load_dataset
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import ConfusionMatrixDisplay, classification_report, f1_score
-from transformers import (AutoModelForSequenceClassification, AutoTokenizer,
+from transformers import (AutoConfig, AutoModelForSequenceClassification, AutoTokenizer,
                           DataCollatorWithPadding, Trainer, TrainingArguments)
 
 BASE_MODEL = "cointegrated/rubert-tiny2"
@@ -59,6 +60,7 @@ def main():
     p.add_argument("--max-length", type=int, default=256)
     p.add_argument("--batch", type=int, default=32)
     p.add_argument("--resume", help="checkpoint dir to continue an interrupted run from")
+    p.add_argument("--lr", type=float, default=5e-5)
     args = p.parse_args()
 
     train, val, test = load_balanced(args.per_class)
@@ -81,6 +83,11 @@ def main():
     model = AutoModelForSequenceClassification.from_pretrained(
         args.base_model, num_labels=3,
         id2label=dict(enumerate(LABELS)), label2id={l: i for i, l in enumerate(LABELS)})
+    src = {v.lower(): int(k) for k, v in AutoConfig.from_pretrained(args.base_model).id2label.items()}
+    if set(src) == set(LABELS):  # backbone already has a sentiment head: reorder its rows to our label order
+        order = [src[l] for l in LABELS]
+        model.classifier.weight.data = model.classifier.weight.data[order]
+        model.classifier.bias.data = model.classifier.bias.data[order]
 
     def metrics(ev):
         pred = np.argmax(ev.predictions, axis=-1)
@@ -92,10 +99,11 @@ def main():
         args=TrainingArguments(
             output_dir=f"checkpoints/{args.out}", num_train_epochs=args.epochs,
             per_device_train_batch_size=args.batch, per_device_eval_batch_size=64,
-            learning_rate=5e-5, warmup_steps=0.06, weight_decay=0.01,
+            learning_rate=args.lr, warmup_steps=0.06, weight_decay=0.01,
             eval_strategy="epoch", save_strategy="epoch", save_total_limit=1,
             load_best_model_at_end=True, metric_for_best_model="f1_macro",
-            logging_steps=100, report_to="none", seed=args.seed),
+            logging_steps=100, report_to="none", seed=args.seed,
+            fp16=torch.cuda.is_available()),  # ~2x faster on NVIDIA GPUs
         train_dataset=train_t, eval_dataset=val_t,
         data_collator=DataCollatorWithPadding(tok), compute_metrics=metrics)
     trainer.train(resume_from_checkpoint=args.resume)
