@@ -1,0 +1,30 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install (CPU torch)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      # shortcut: cache key is fixed, bump the suffix after republishing the model to HF
+      - uses: actions/cache@v4
+        with:
+          path: model
+          key: hf-ru-reviews-rubert-v1
+      - name: Download published model from Hugging Face
+        run: test -f model/config.json || python -c "from huggingface_hub import snapshot_download; snapshot_download('savocheek/ru-reviews-rubert', local_dir='model')"
+      - name: Tests
+        env:
+          DEVICE: cpu
+        run: pytest -q
