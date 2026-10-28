@@ -8,8 +8,10 @@
    (augment.typos) with the teacher's targets for the clean text, so the student learns to ignore them.
 Best epoch by mean macro-F1 on the real val split (gold labels), as in train_multi.py.
 
-Usage: python distill.py [--teacher model] [--student model_v3b] [--out model_student] [--n 100000]
-Teacher outputs are cached in data/distill_teacher.npz, so a rerun skips step 1.
+Usage: python distill.py [--teacher model_multi] [--student model_v3b] [--out model_student] [--n 100000] [--seed 42]
+       [--cache data/distill_teacher.npz]
+Teacher outputs are cached (one file per transfer-set size), so a rerun skips step 1. --seed changes the
+init of the heads, batch order and which examples get typos, not the transfer set.
 """
 import argparse
 import copy
@@ -31,7 +33,6 @@ from tasks import load_multitask
 from train import LABELS, SEED
 from train_multi import TASKS, predict, scores
 
-CACHE = Path("data/distill_teacher.npz")
 TOKEN_KEYS = ("input_ids", "attention_mask", "token_type_ids")
 
 
@@ -83,7 +84,7 @@ def teacher_logprobs(path, texts, batch=128):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--teacher", default="model")
+    p.add_argument("--teacher", default="model_multi")
     p.add_argument("--student", default="model_v3b", help="initial weights (a ruBert-base sentiment model)")
     p.add_argument("--out", default="model_student")
     p.add_argument("--n", type=int, default=100_000)
@@ -93,15 +94,18 @@ def main():
     p.add_argument("--batch", type=int, default=32)
     p.add_argument("--temperature", type=float, default=2.0)
     p.add_argument("--typo-share", type=float, default=0.15)
+    p.add_argument("--seed", type=int, default=SEED)
+    p.add_argument("--cache", default="data/distill_teacher.npz")
     args = p.parse_args()
-    torch.manual_seed(SEED)
+    torch.manual_seed(args.seed)
+    cache = Path(args.cache)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     (train, val, test), cats = load_multitask()
     synth = train_examples()
     hard = [json.loads(x) for x in Path("data/hard_train.jsonl").read_text(encoding="utf-8").splitlines()]
-    if CACHE.exists():
-        z = np.load(CACHE, allow_pickle=True)
+    if cache.exists():
+        z = np.load(cache, allow_pickle=True)
         texts, n_sent = list(z["texts"]), int(z["n_sentiment_only"])
         lp = {t: z[t] for t in TASKS}
     else:
@@ -112,12 +116,12 @@ def main():
         sent_only = synth["text"] + [h["text"] for h in hard]  # no real stars/category behind these
         texts, n_sent = transfer + list(train["text"]) + sent_only, len(sent_only)
         lp = teacher_logprobs(args.teacher, texts)
-        np.savez(CACHE, texts=np.array(texts, dtype=object), n_sentiment_only=n_sent, **lp)
+        np.savez(cache, texts=np.array(texts, dtype=object), n_sentiment_only=n_sent, **lp)
         print(f"== {time.strftime('%H:%M')} teacher done, cool-down 60 s", flush=True)
         time.sleep(60)  # one GPU job at a time, with a pause between them (this PC once crashed under load)
     assert len(set(texts) & (set(val["text"]) | set(test["text"]))) == 0
 
-    rng = random.Random(SEED)
+    rng = random.Random(args.seed)
     noisy = [typos(t, rng) if rng.random() < args.typo_share else t for t in texts]
     print(f"student train={len(texts)} (sentiment-only {n_sent}), with typos: "
           f"{sum(a != b for a, b in zip(noisy, texts))}", flush=True)
@@ -136,7 +140,7 @@ def main():
         return b
 
     tl = DataLoader(data, batch_size=args.batch, shuffle=True, collate_fn=collate,
-                    generator=torch.Generator().manual_seed(SEED))
+                    generator=torch.Generator().manual_seed(args.seed))
     from transformers import DataCollatorWithPadding
     enc = lambda b: tok(b["text"], truncation=True, max_length=256)
     vl = DataLoader(val.map(enc, batched=True).remove_columns("text"), batch_size=128,
@@ -199,7 +203,8 @@ def main():
     torch.save(heads.state_dict(), out / "heads.pt")
     (out / "multitask.json").write_text(json.dumps(
         {"stars": [1, 2, 3, 4, 5], "categories": cats, "base_model": args.student, "teacher": args.teacher,
-         "distillation": {"transfer": args.n, "temperature": T, "typo_share": args.typo_share},
+         "distillation": {"transfer": args.n, "temperature": T, "typo_share": args.typo_share,
+                          "transfer_actual": len(texts) - n_sent - len(train), "seed": args.seed},
          "val_mean_f1": round(best_val, 4)}, ensure_ascii=False, indent=1), encoding="utf-8")
     (out / "reports").mkdir(exist_ok=True)
     (out / "reports" / "multitask_test.json").write_text(json.dumps(test_scores, indent=2))
