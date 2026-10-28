@@ -31,3 +31,4 @@ onnx_student/
 *.safetensors
 *.onnx
 NEXT_STEPS.md
+label_*.log
