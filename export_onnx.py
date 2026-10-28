@@ -34,6 +34,7 @@ def main():
     out = Path(sys.argv[2] if len(sys.argv) > 2 else f"{src}_onnx")
     out.mkdir(exist_ok=True)
     an = Analyzer(src)  # DEVICE=cpu for export
+    an.ort = None  # the PyTorch reference, never an ONNX file Analyzer found (a stray ./onnx belongs to another model)
     an.model.float().cpu(), an.heads and an.heads.cpu()
     names = ["sentiment"] + (["stars", "category"] if an.heads is not None else [])
     enc = an.tok(["Пример отзыва для экспорта"], return_tensors="pt")
