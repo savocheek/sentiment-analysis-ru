@@ -32,3 +32,8 @@ onnx_student/
 *.onnx
 NEXT_STEPS.md
 label_*.log
+round3.log
+train_big.log
+distill_*.log
+onnx_model_*/
+onnx_model_*.log

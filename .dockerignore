@@ -1,0 +1,8 @@
+# only what the Dockerfile copies: keeps the build context small (no .venv, data, checkpoints)
+*
+!requirements.txt
+!sentiment.py
+!app.py
+!api.py
+!model
+model/training_args.bin
