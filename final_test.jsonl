@@ -2,3 +2,4 @@
 {"model": "model_v2", "real_f1": 0.7821, "hard_test_neg": 0.55, "hard_test_pos": 0.871, "fresh23": 13, "first25": 20, "templ141": 94, "hard_test_bal": 0.711}
 {"model": "model_multi", "real_f1": 0.8196, "hard_test_neg": 0.716, "hard_test_pos": 0.955, "fresh23": 18, "first25": 22, "templ141": 135, "hard_test_bal": 0.835}
 {"model": "model_student", "real_f1": 0.8228, "hard_test_neg": 0.705, "hard_test_pos": 0.959, "fresh23": 16, "first25": 24, "templ141": 133, "hard_test_bal": 0.832}
+{"model": "model_tiny", "real_f1": 0.791, "hard_test_neg": 0.664, "hard_test_pos": 0.946, "fresh23": 12, "first25": 21, "templ141": 92, "hard_test_bal": 0.805}

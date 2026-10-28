@@ -268,5 +268,113 @@
     ]
    ]
   }
+ },
+ "model_multi_big": {
+  "start": {
+   "f1_macro": 0.5721,
+   "accuracy": 0.614,
+   "recall": {
+    "negative": 0.717,
+    "neutral": 0.202,
+    "positive": 0.923
+   },
+   "confusion": [
+    [
+     717,
+     176,
+     107
+    ],
+    [
+     212,
+     202,
+     586
+    ],
+    [
+     59,
+     18,
+     923
+    ]
+   ]
+  },
+  "end": {
+   "f1_macro": 0.5727,
+   "accuracy": 0.611,
+   "recall": {
+    "negative": 0.67,
+    "neutral": 0.212,
+    "positive": 0.951
+   },
+   "confusion": [
+    [
+     670,
+     201,
+     129
+    ],
+    [
+     159,
+     212,
+     629
+    ],
+    [
+     35,
+     14,
+     951
+    ]
+   ]
+  }
+ },
+ "model_tiny": {
+  "start": {
+   "f1_macro": 0.4843,
+   "accuracy": 0.5127,
+   "recall": {
+    "negative": 0.83,
+    "neutral": 0.218,
+    "positive": 0.49
+   },
+   "confusion": [
+    [
+     830,
+     139,
+     31
+    ],
+    [
+     547,
+     218,
+     235
+    ],
+    [
+     408,
+     102,
+     490
+    ]
+   ]
+  },
+  "end": {
+   "f1_macro": 0.5213,
+   "accuracy": 0.5447,
+   "recall": {
+    "negative": 0.823,
+    "neutral": 0.262,
+    "positive": 0.549
+   },
+   "confusion": [
+    [
+     823,
+     151,
+     26
+    ],
+    [
+     457,
+     262,
+     281
+    ],
+    [
+     321,
+     130,
+     549
+    ]
+   ]
+  }
  }
 }

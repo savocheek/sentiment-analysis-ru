@@ -37,3 +37,4 @@ train_big.log
 distill_*.log
 onnx_model_*/
 onnx_model_*.log
+onnx_redo.log

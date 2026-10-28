@@ -13,3 +13,7 @@
 {"model": "model_v3b_s1", "real_f1": 0.8061, "hard_dev_neg": 0.619, "hard_dev_pos": 0.957, "fresh23": 19, "first25": 23, "templ141": 130, "hard_dev_bal": 0.788}
 {"model": "model_v3b_s2", "real_f1": 0.8022, "hard_dev_neg": 0.606, "hard_dev_pos": 0.952, "fresh23": 18, "first25": 24, "templ141": 128, "hard_dev_bal": 0.779}
 {"model": "model_student", "real_f1": 0.8228, "hard_dev_neg": 0.693, "hard_dev_pos": 0.935, "fresh23": 16, "first25": 24, "templ141": 133, "hard_dev_bal": 0.814}
+{"model": "model_multi_big", "real_f1": 0.784, "hard_dev_neg": 0.719, "hard_dev_pos": 0.965, "fresh23": 18, "first25": 24, "templ141": 131, "hard_dev_bal": 0.842}
+{"model": "model_tiny", "real_f1": 0.791, "hard_dev_neg": 0.658, "hard_dev_pos": 0.944, "fresh23": 12, "first25": 21, "templ141": 92, "hard_dev_bal": 0.801}
+{"model": "model_student_s1", "real_f1": 0.8211, "hard_dev_neg": 0.693, "hard_dev_pos": 0.944, "fresh23": 16, "first25": 23, "templ141": 132, "hard_dev_bal": 0.819}
+{"model": "model_student_s2", "real_f1": 0.822, "hard_dev_neg": 0.688, "hard_dev_pos": 0.944, "fresh23": 18, "first25": 24, "templ141": 133, "hard_dev_bal": 0.816}
